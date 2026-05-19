@@ -1,0 +1,426 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Brick Breaker</title>
+
+<style>
+    body{
+        margin:0;
+        overflow:hidden;
+        background:#000;
+        display:flex;
+        justify-content:center;
+        align-items:center;
+        height:100vh;
+        font-family:Arial;
+    }
+
+    canvas{
+        background:linear-gradient(to bottom,#0a0a0a,#111);
+        border:2px solid white;
+        box-shadow:0 0 20px rgba(255,255,255,0.2);
+    }
+</style>
+</head>
+<body>
+
+<canvas id="gameCanvas" width="800" height="600"></canvas>
+
+<script>
+const canvas = document.getElementById("gameCanvas");
+const ctx = canvas.getContext("2d");
+
+// ESTADO
+let score = 0;
+let vidas = 3;
+let jogoRodando = true;
+
+// BARRA
+const barra = {
+    width:120,
+    height:15,
+    x:340,
+    y:560,
+    speed:8
+};
+
+// BOLA
+const bola = {
+    x:400,
+    y:500,
+    radius:8,
+
+    // VELOCIDADE MAIS LENTA
+    speed:2.5,
+    dx:2.5,
+    dy:-2.5
+};
+
+// CONTROLES
+const teclas = {};
+
+document.addEventListener("keydown",(e)=>{
+    teclas[e.key] = true;
+
+    if(!jogoRodando && e.key === "Enter"){
+        reiniciarJogo();
+    }
+});
+
+document.addEventListener("keyup",(e)=>{
+    teclas[e.key] = false;
+});
+
+// BLOCOS
+const linhas = 6;
+const colunas = 10;
+
+const larguraBloco = 70;
+const alturaBloco = 25;
+const padding = 10;
+const offsetTop = 60;
+const offsetLeft = 35;
+
+let blocos = [];
+
+function criarBlocos(){
+
+    blocos = [];
+
+    for(let l = 0; l < linhas; l++){
+
+        for(let c = 0; c < colunas; c++){
+
+            blocos.push({
+                x:
+                    offsetLeft +
+                    c * (larguraBloco + padding),
+
+                y:
+                    offsetTop +
+                    l * (alturaBloco + padding),
+
+                width:larguraBloco,
+                height:alturaBloco,
+                destroyed:false,
+                color:`hsl(${l * 50}, 80%, 55%)`
+            });
+        }
+    }
+}
+
+criarBlocos();
+
+// FUNDO
+function desenharFundo(){
+
+    ctx.fillStyle = "#050505";
+    ctx.fillRect(0,0,canvas.width,canvas.height);
+
+    // partículas
+    for(let i = 0; i < 20; i++){
+
+        ctx.fillStyle = "rgba(255,255,255,0.05)";
+
+        ctx.beginPath();
+
+        ctx.arc(
+            Math.random() * canvas.width,
+            Math.random() * canvas.height,
+            Math.random() * 2,
+            0,
+            Math.PI * 2
+        );
+
+        ctx.fill();
+    }
+}
+
+// BARRA
+function desenharBarra(){
+
+    ctx.fillStyle = "#00ffff";
+
+    ctx.fillRect(
+        barra.x,
+        barra.y,
+        barra.width,
+        barra.height
+    );
+}
+
+// BOLA
+function desenharBola(){
+
+    ctx.beginPath();
+
+    ctx.arc(
+        bola.x,
+        bola.y,
+        bola.radius,
+        0,
+        Math.PI * 2
+    );
+
+    ctx.fillStyle = "white";
+
+    ctx.shadowBlur = 20;
+    ctx.shadowColor = "white";
+
+    ctx.fill();
+
+    ctx.shadowBlur = 0;
+
+    ctx.closePath();
+}
+
+// BLOCOS
+function desenharBlocos(){
+
+    blocos.forEach(b=>{
+
+        if(!b.destroyed){
+
+            ctx.fillStyle = b.color;
+
+            ctx.fillRect(
+                b.x,
+                b.y,
+                b.width,
+                b.height
+            );
+
+            ctx.strokeStyle = "rgba(255,255,255,0.3)";
+
+            ctx.strokeRect(
+                b.x,
+                b.y,
+                b.width,
+                b.height
+            );
+        }
+    });
+}
+
+// HUD
+function desenharHUD(){
+
+    ctx.fillStyle = "white";
+
+    ctx.font = "22px Arial";
+
+    ctx.fillText(
+        "Pontuação: " + score,
+        20,
+        35
+    );
+
+    ctx.fillText(
+        "Vidas: " + vidas,
+        650,
+        35
+    );
+}
+
+// GAME OVER
+function gameOver(){
+    jogoRodando = false;
+}
+
+function desenharGameOver(){
+
+    ctx.fillStyle = "white";
+
+    ctx.textAlign = "center";
+
+    ctx.font = "60px Arial";
+
+    ctx.fillText(
+        "GAME OVER",
+        canvas.width / 2,
+        canvas.height / 2 - 20
+    );
+
+    ctx.font = "28px Arial";
+
+    ctx.fillText(
+        "Pressione ENTER para reiniciar",
+        canvas.width / 2,
+        canvas.height / 2 + 40
+    );
+
+    ctx.textAlign = "start";
+}
+
+// REINICIAR
+function reiniciarJogo(){
+
+    score = 0;
+    vidas = 3;
+
+    bola.x = 400;
+    bola.y = 500;
+
+    // VELOCIDADE MAIS LENTA
+    bola.dx = 2.5;
+    bola.dy = -2.5;
+
+    barra.x = 340;
+
+    criarBlocos();
+
+    jogoRodando = true;
+}
+
+// MOVIMENTO DA BOLA
+function atualizarBola(){
+
+    bola.x += bola.dx;
+    bola.y += bola.dy;
+
+    // PAREDES
+    if(
+        bola.x + bola.radius > canvas.width ||
+        bola.x - bola.radius < 0
+    ){
+        bola.dx *= -1;
+    }
+
+    // TOPO
+    if(
+        bola.y - bola.radius < 0
+    ){
+        bola.dy *= -1;
+    }
+
+    // CHÃO
+    if(
+        bola.y + bola.radius > canvas.height
+    ){
+
+        vidas--;
+
+        if(vidas <= 0){
+
+            gameOver();
+
+        }else{
+
+            bola.x = 400;
+            bola.y = 500;
+
+            // VELOCIDADE MAIS LENTA
+            bola.dx = 2.5;
+            bola.dy = -2.5;
+
+            barra.x = 340;
+        }
+    }
+
+    // COLISÃO BARRA
+    if(
+        bola.x > barra.x &&
+        bola.x < barra.x + barra.width &&
+        bola.y + bola.radius > barra.y &&
+        bola.y - bola.radius < barra.y + barra.height
+    ){
+
+        let pontoColisao =
+            bola.x - (barra.x + barra.width / 2);
+
+        pontoColisao =
+            pontoColisao / (barra.width / 2);
+
+        let angulo =
+            pontoColisao * Math.PI / 3;
+
+        bola.dx =
+            bola.speed * Math.sin(angulo);
+
+        bola.dy =
+            -bola.speed * Math.cos(angulo);
+    }
+
+    // COLISÃO BLOCOS
+    blocos.forEach(b=>{
+
+        if(!b.destroyed){
+
+            if(
+                bola.x + bola.radius > b.x &&
+                bola.x - bola.radius < b.x + b.width &&
+                bola.y + bola.radius > b.y &&
+                bola.y - bola.radius < b.y + b.height
+            ){
+
+                bola.dy *= -1;
+
+                b.destroyed = true;
+
+                score += 10;
+            }
+        }
+    });
+
+    // VITÓRIA
+    const restantes =
+        blocos.filter(b => !b.destroyed);
+
+    if(restantes.length === 0){
+
+        criarBlocos();
+
+        bola.x = 400;
+        bola.y = 500;
+
+        bola.dx = 2.5;
+        bola.dy = -2.5;
+    }
+}
+
+// LOOP PRINCIPAL
+function atualizar(){
+
+    desenharFundo();
+
+    if(jogoRodando){
+
+        // MOVIMENTO
+        if(
+            teclas["ArrowLeft"] &&
+            barra.x > 0
+        ){
+            barra.x -= barra.speed;
+        }
+
+        if(
+            teclas["ArrowRight"] &&
+            barra.x <
+            canvas.width - barra.width
+        ){
+            barra.x += barra.speed;
+        }
+
+        atualizarBola();
+
+        desenharBarra();
+        desenharBola();
+        desenharBlocos();
+        desenharHUD();
+
+    }else{
+
+        desenharGameOver();
+    }
+
+    requestAnimationFrame(atualizar);
+}
+
+atualizar();
+
+</script>
+
+</body>
+</html>
